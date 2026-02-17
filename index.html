@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>骰子大富翁：數學騙局示範</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <div id="entry-overlay" style="
+  position:fixed; inset:0; background:rgba(0,0,0,0.7);
+  display:flex; align-items:center; justify-content:center;
+  z-index:9999;
+">
+  <div style="
+    background:#ffffff; max-width:520px; width:90%;
+    border-radius:8px; padding:20px 24px;
+    box-shadow:0 4px 12px rgba(0,0,0,0.4);
+    line-height:1.6; font-size:14px;
+  ">
+    <h2 style="margin-top:0;">使用前須知</h2>
+    <p>製作人：浦丞</p>
+    <p>本網站嚴禁用於任何形式的賭博或獲利行為，僅供教學、數學模型模擬與示範之用。</p>
+    <p>反賭博宣導：</p>
+    <ul style="padding-left:20px; margin-top:4px;">
+      <li>賭博長期必輸，輸的不是機率，而是人生的時間與關係。</li>
+      <li>請勿心存僥倖，以為「快回本」；大數定律只會幫助莊家。</li>
+      <li>若你或身邊的人有賭博困擾，請尋求專業協助與諮商管道。</li>
+    </ul>
+    <div style="text-align:right; margin-top:16px;">
+      <button id="entry-confirm-btn">我了解了，進入網站</button>
+    </div>
+  </div>
+</div>
+
+  <h1>骰子大富翁：數學騙局示範</h1>
+
+  <!-- 分頁切換 -->
+  <div class="tabs">
+    <button class="tab-button active" data-tab="player-tab">玩家</button>
+    <button class="tab-button" data-tab="admin-tab">後台</button>
+    <button class="tab-button" data-tab="explain-tab">數學解釋</button>
+  </div>
+
+  <!-- 玩家分頁 -->
+  <section id="player-tab" class="tab-content active">
+    <section id="board-section" class="card">
+      <h2>棋盤</h2>
+      <div style="position:relative; display:inline-block;">
+        <div id="board" class="board-grid"></div>
+
+        <!-- 棋盤中央控制區 -->
+        <div id="board-controls"
+             style="position:absolute; inset:80px; display:flex; flex-direction:column; justify-content:flex-start; align-items:center; gap:12px;">
+
+          <div style="display:flex; gap:40px; margin-top:10px;">
+            <button id="dir-cw-btn">順時針</button>
+            <button id="dir-ccw-btn">逆時針</button>
+          </div>
+
+          <!-- 線上 / 線下 分頁切換 -->
+          <div style="margin-top:10px;">
+            <button id="tab-online-btn" class="center-tab-btn active">線上</button>
+            <button id="tab-offline-btn" class="center-tab-btn">線下</button>
+          </div>
+
+          <!-- 線上模式 -->
+          <div id="auto-center-block"
+               style="background:#000; color:#fff; padding:10px 16px; border-radius:6px; text-align:center; min-width:260px;">
+            <div style="margin-bottom:6px;">線上 5 顆骰，一次玩 10 局</div>
+            <button id="play-ten-btn">開始</button>
+          </div>
+
+          <!-- 線下模式 -->
+          <div id="manual-center-block"
+               style="background:#000; color:#fff; padding:10px 16px; border-radius:6px; text-align:center; min-width:260px; display:none;">
+            <div style="margin-bottom:6px;">線下點數：</div>
+            <div style="margin-bottom:6px;">
+              <input type="number" min="5" max="30" id="manual-sum-input"
+                     style="width:80px; text-align:center;">
+              <span>次數 <span id="manual-count">0</span> / 10</span>
+            </div>
+            <button id="manual-start-btn">開始</button>
+          </div>
+
+          <div style="margin-top:4px;">
+            <label style="background:#000; color:#fff; padding:4px 8px; border-radius:4px;">
+              <input type="checkbox" id="skip-animation"> 跳過動畫
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div id="last-result" class="subcard"></div>
+      <div id="batch-summary" class="subcard"></div>
+    </section>
+
+    <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-top:12px; font-size:13px;">
+      <p>數學解釋頁面密碼1234</p>
+      <div style="text-align:right;">
+        <p>浦丞出品必是精品</p>
+        <p>本網站禁止利用於各種賭博，僅作示範教學及數學模型模擬</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 後台分頁 -->
+  <section id="admin-tab" class="tab-content">
+    <section id="admin-login-section" class="card">
+      <h2>後台登入</h2>
+      <label>後台密碼：
+        <input id="admin-password-input" type="password">
+      </label>
+      <button id="admin-login-btn">登入</button>
+      <span id="admin-login-msg"></span>
+    </section>
+
+    <section id="admin-panel" style="display:none;">
+      <section class="card">
+        <h2>玩家統計</h2>
+        <div>總局數：<span id="total-games">0</span></div>
+        <div>總盈虧：<span id="total-profit">0</span></div>
+        <div>平均每局盈虧：<span id="avg-profit">0</span></div>
+      </section>
+
+      <section class="card">
+        <h2>設定與風控</h2>
+        <div class="control-row">
+          <label>每局成本（元）：
+            <input id="cost-input" type="number" value="100">
+          </label>
+        </div>
+
+        <div class="control-row">
+          <label>10 局最大可接受虧損 L（元）：
+            <input id="max-loss-10" type="number" value="100">
+          </label>
+          <button id="apply-scale-btn">重新計算倍率並套用</button>
+        </div>
+        <div id="scale-info"></div>
+      </section>
+
+      <section class="card">
+        <h2>折線圖：玩家累計盈虧</h2>
+        <canvas id="profit-chart" width="800" height="300"></canvas>
+      </section>
+
+      <section class="card">
+        <h2>模擬多局（只算數學，不畫動畫）</h2>
+        <div class="control-row">
+          <label>模擬局數：
+            <input id="sim-count" type="number" value="100000">
+          </label>
+          <button id="simulate-btn">開始模擬</button>
+        </div>
+        <div id="simulate-result"></div>
+      </section>
+
+      <section class="card">
+        <h2>歷史盈虧表格</h2>
+        <button id="clear-history-btn">清除歷史紀錄</button>
+
+        <div class="tables-wrapper">
+          <div>
+            <h3>近 10 場</h3>
+            <table id="recent-10-table">
+              <thead>
+                <tr><th>#</th><th>淨利潤</th></tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+
+          <div>
+            <h3>近 100 場</h3>
+            <table id="recent-100-table">
+              <thead>
+                <tr><th>#</th><th>淨利潤</th></tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+
+          <div>
+            <h3>總統計</h3>
+            <table id="total-table">
+              <thead>
+                <tr><th>總局數</th><th>總盈虧</th><th>平均每局</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td id="total-table-games">0</td>
+                  <td id="total-table-profit">0</td>
+                  <td id="total-table-avg">0</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </section>
+  </section>
+
+  <!-- 數學解釋分頁 -->
+  <section id="explain-tab" class="tab-content">
+    <section id="explain-login-section" class="card">
+      <h2>數學解釋登入</h2>
+      <label>說明頁密碼：
+        <input id="explain-password-input" type="password">
+      </label>
+      <button id="explain-login-btn">登入</button>
+      <span id="explain-login-msg"></span>
+    </section>
+
+        <section id="explain-content" style="display:none;" class="card">
+  <h2>論文式說明：骰子大富翁的數學結構</h2>
+
+  <h3>摘要</h3>
+  <p>
+    本說明以「骰子大富翁」為範例，從機率論與統計學角度，建構完整的數學模型。
+    透過期望值、變異數與大數定律的分析，說明如何設計一個「長期玩家必輸、
+    但單局結果仍具娛樂性」的骰子棋盤遊戲，並給出獎金金額縮放的公式與風險控制方法。
+  </p>
+
+  <h3>一、前言</h3>
+  <p>
+    多數賭博遊戲的核心在於：讓玩家短期有贏錢的可能，但長期期望值為負。
+    本遊戲刻意把數學結構透明化，讓玩家與學生親眼看到「期望值」與「大數定律」
+    如何在實際遊戲中運作，並透過後台統計與模擬，觀察長期結果趨近理論值的過程。
+  </p>
+
+  <h3>二、符號與隨機變數定義</h3>
+
+  <h4>2.1 骰子與點數</h4>
+  <p>
+    我們擲 5 顆公平六面骰，記第 i 顆骰子的點數為 X_i（i = 1,2,3,4,5）。
+    每一顆骰子都服從 1 到 6 的均勻分配，彼此獨立。
+    將五顆骰子的結果寫成向量 D = (X_1, X_2, X_3, X_4, X_5)，稱為一次擲骰結果。
+  </p>
+
+  <h4>2.2 總和隨機變數</h4>
+  <p>
+    定義五顆骰子的總和 S = X_1 + X_2 + X_3 + X_4 + X_5，
+    S 的可能值介於 5 到 30 之間。
+    其機率分布可以用理論捲積計算，也可以透過大量模擬估計每一個總和 s 的機率。
+  </p>
+
+  <h4>2.3 豹子事件</h4>
+  <p>
+    定義豹子事件 A_bao 為「五顆骰子全部都是 6」，
+    也就是 X_1 = X_2 = X_3 = X_4 = X_5 = 6。
+    由於每顆骰子出現 6 的機率是 1/6，且五顆獨立，
+    故豹子的機率為 (1/6)^5 = 1/7776。
+  </p>
+
+  <h4>2.4 棋盤與格子獎金</h4>
+  <p>
+    棋盤外圈共有 N 個格子（本實作為 N = 26）。
+    沿外圈順序將格子編上索引 j = 1, 2, ..., N，
+    各格子具有：
+  </p>
+  <ul>
+    <li>格號 id_j：顯示在棋盤上的編號（例如 #10、#17 等）。</li>
+    <li>原始獎金 p_j^(0)：尚未縮放前，每一格預設的獎金或損失。</li>
+  </ul>
+  <p>
+    另外，對於豹子結果還有一個原始特殊獎金 B^(0)，
+    不依棋盤位置，而是只要出現五顆 6 就直接給這個獎金。
+  </p>
+
+  <h4>2.5 玩家成本與淨利潤</h4>
+  <p>
+    每局遊戲玩家需要支付固定成本 c（例如 100 元），
+    這是進場玩一局的「門票」。
+    設玩家在某局得到的獎金為 P(D)，
+    則玩家單局淨利潤定義為 R = P(D) - c。
+    若 R &gt; 0 表示玩家賺錢，R &lt; 0 則表示玩家虧損。
+  </p>
+
+  <h3>三、棋盤移動規則之數學化</h3>
+
+  <h4>3.1 方向選擇</h4>
+  <p>
+    玩家事先在「順時針（cw）」與「逆時針（ccw）」中選一個方向，
+    並在整局遊戲中固定不變。
+    在數學上，我們用一個符號 δ 表示方向：
+  </p>
+  <ul>
+    <li>dir = cw（順時針）時，δ = +1。</li>
+    <li>dir = ccw（逆時針）時，δ = -1。</li>
+  </ul>
+
+  <h4>3.2 起點格索引</h4>
+  <p>
+    實作中，棋盤格子會以 0 到 N-1 的索引來儲存。
+    我們定義一個函數 g(S) 將骰子總和 S 對應到起點格的索引：
+  </p>
+  <ul>
+    <li>若棋盤上存在格子的 id_j 剛好等於 S，則 g(S) 等於該格索引 j 的 0-based 版本。</li>
+    <li>若不存在剛好為 S 的格子，則用 (S - 1) 對 N 取餘數的方式對應到某個格子。</li>
+  </ul>
+  <p>
+    直觀上就是：「如果有 S 號格就從那裡開始，沒有就繞回外圈對應位置」。
+  </p>
+
+  <h4>3.3 終點格索引</h4>
+  <p>
+    設起點索引為 j0 = g(S)，需要再走的步數為 S - 1，
+    並依據 δ 決定前進方向。
+    以 0-based 索引 J(D) 表示終點格，則
+    J(D) 會等於「從 j0 出發，沿方向 δ 走 S-1 步，遇到邊界就循環」的結果，
+    最後再加 1 可以得到 1 到 N 的索引 I(D)。
+  </p>
+  <p>
+    最終停留位置 I(D) 完全由擲骰結果 D（透過 S）以及玩家選擇的方向決定，
+    因此 I(D) 是一個隨機變數。
+  </p>
+
+  <h4>3.4 終點獎金</h4>
+  <p>
+    若本局不是豹子事件（也就是骰子不是五顆 6），
+    則終點格的獎金為 p_{I(D)}；
+    若是豹子，則不看棋盤位置，直接給一筆固定獎金 B。
+    因此獎金 P(D) 可以寫成「依條件分情況」的隨機變數：
+  </p>
+  <p>
+    非正式地說，就是「豹子拿 B，其他情況看最後停在哪一格就拿該格獎金」。
+  </p>
+
+  <h3>四、獎金縮放與設計參數</h3>
+
+  <h4>4.1 原始棋盤與縮放倍率 k</h4>
+  <p>
+    遊戲設計時，通常先憑直覺或教學需求設計一組「原始棋盤」，
+    即每格的原始獎金 p_j^(0) 以及原始豹子獎金 B^(0)。
+    這時的期望獎金稱為原始期望獎金，記作 μ_prize^(0)。
+  </p>
+  <p>
+    為了讓同一套棋盤可以搭配不同的成本與風險設定，
+    我們對所有獎金乘上一個縮放倍率 k &gt; 0，
+    形成實際使用的獎金：
+  </p>
+  <ul>
+    <li>每格獎金：p_j = k · p_j^(0)。</li>
+    <li>豹子獎金：B = k · B^(0)。</li>
+  </ul>
+  <p>
+    由於期望值對常數倍具有線性關係，
+    縮放後的期望獎金會變成 μ_prize = k · μ_prize^(0)。
+  </p>
+
+  <h4>4.2 單局期望淨利潤</h4>
+  <p>
+    玩家每局淨利潤為 R = P(D) - c。
+    若以 μ_prize 表示縮放後的期望獎金，
+    則單局期望淨利潤為 μ_R = μ_prize - c。
+    也就是 μ_R = k · μ_prize^(0) - c。
+  </p>
+  <p>
+    遊戲設計目標很單純：讓 μ_R &lt; 0，
+    代表長期而言玩家平均一定會虧錢，
+    只是虧多虧少可以透過 k 來調整。
+  </p>
+
+  <h4>4.3 依「10 局可接受虧損 L」反推出倍率 k</h4>
+  <p>
+    在本系統中，後台允許設計者輸入：
+  </p>
+  <ul>
+    <li>每局成本 c（例如 100 元）。</li>
+    <li>10 局內可接受的最大總虧損 L（例如 1000 元）。</li>
+  </ul>
+  <p>
+    我們希望在「期望值」的層次上，
+    玩 10 局時玩家大約會虧掉 L 元，
+    也就是每局期望虧損約為 μ_R* = -L / 10。
+  </p>
+  <p>
+    把 μ_R* 代入 μ_R = k · μ_prize^(0) - c，
+    便可以解出縮放倍率 k =
+    (c + μ_R*) / μ_prize^(0) = (c - L/10) / μ_prize^(0)。
+    這正是程式裡按下「重新計算倍率並套用」時所使用的數學公式。
+  </p>
+
+  <h3>五、統計性質與大數定律</h3>
+
+  <h4>5.1 單局期望與變異數</h4>
+  <p>
+    對單局淨利潤 R，我們關心兩個數值：
+  </p>
+  <ul>
+    <li>期望值 μ_R = E[R]，代表「理論上的平均獲利」。</li>
+    <li>變異數 σ_R^2 = Var(R)，代表單局結果的波動大小。</li>
+  </ul>
+  <p>
+    在實作中，這兩個量可以透過蒙地卡羅模擬估計：
+    不斷重複擲骰、套用棋盤規則、計算 R，
+    再取平均與平方平均，即可得到近似值。
+  </p>
+
+  <h4>5.2 多局總盈虧與平均盈虧</h4>
+  <p>
+    若玩家連續玩 n 局，記第 i 局淨利潤為 R_i，
+    並假設每局獨立且具有相同分布（同樣的規則、同樣的 k 等），
+    則總盈虧 T_n 定義為 R_1 + R_2 + ... + R_n。
+  </p>
+  <p>
+    在此假設下，總盈虧的期望為 E[T_n] = n·μ_R，
+    變異數為 Var(T_n) = n·σ_R^2。
+    若我們再看平均盈虧 R_bar_n = T_n / n，
+    則其期望仍是 μ_R，而變異數會隨 n 增加而變小。
+  </p>
+
+  <h4>5.3 大數定律的意義</h4>
+  <p>
+    大數定律告訴我們：當 n 越來越大時，
+    R_bar_n 會越來越接近 μ_R。
+    只要 μ_R 是負的，玩家玩得越久，
+    實際平均結果就越接近這個負值，
+    也就是「長期一定輸」。
+  </p>
+  <p>
+    在本系統中，後台的「模擬多局」功能正是透過大量模擬 R_i，
+    來觀察 T_n 與平均值的表現；
+    而折線圖中的三條曲線——
+    總累計盈虧、近 10 場累計盈虧、近 100 場累計盈虧——
+    則幫助我們比較短期波動與長期趨勢的差異。
+  </p>
+
+  <h3>六、結論</h3>
+  <p>
+    本系統以 5 顆公平骰與環狀棋盤為基礎，透過嚴格定義的隨機變數
+    （包含骰子向量、總和、終點格與獎金）與縮放倍率參數，
+    建立了一個期望值可精確控制的遊戲模型。藉由設定單局期望淨利潤
+    μ_R 為負，並利用大數定律說明總盈虧 T_n 與平均盈虧 R_bar_n 的長期行為，
+    可以清楚看出「莊家優勢」並非神祕技巧，
+    而是單純的機率與統計結果。透過前台遊戲與後台模擬、圖表的搭配，
+    使用者得以在安全、非賭博的環境下，實際體驗期望值、變異數與大數定律等
+    概念如何作用於真實的隨機過程。
+  </p>
+</section>
+
+
+
+  <script src="main.js"></script>
+</body>
+</html>
